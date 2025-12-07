@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Agregar insumo a {{ producto.nombre }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-plus"></i> Agregar Insumo a receta - {{ producto.nombre }}</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Insumo</label>
+                        {{ form.insumo }}
+                        {% if form.insumo.errors %}<div class="invalid-feedback d-block">{{ form.insumo.errors }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad</label>
+                        {{ form.cantidad }}
+                        {% if form.cantidad.errors %}<div class="invalid-feedback d-block">{{ form.cantidad.errors }}</div>{% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Unidad</label>
+                        {{ form.unidad }}
+                        {% if form.unidad.errors %}<div class="invalid-feedback d-block">{{ form.unidad.errors }}</div>{% endif %}
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Agregar</button>
+                        <a href="{% url 'producto_detalle' producto.pk %}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

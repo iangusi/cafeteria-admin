@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}{% if form.instance.pk %}Editar Empleado{% else %}Nuevo Empleado{% endif %} - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    {% if form.instance.pk %}
+        <i class="fas fa-edit"></i> Editar Empleado
+    {% else %}
+        <i class="fas fa-plus"></i> Nuevo Empleado
+    {% endif %}
+</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+
+                {# Mostrar errores no field y errores generales del form #}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    <strong>Errores en el formulario:</strong>
+                    <ul class="mb-0">
+                        {% for field, errors in form.errors.items %}
+                            <li><strong>{{ field }}:</strong>
+                                <ul class="mb-0">
+                                    {% for e in errors %}
+                                        <li>{{ e }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <form method="post" id="empleadoForm" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" id="is_edit" value="{% if form.instance.pk %}1{% else %}0{% endif %}">
+                    {# Campos del formulario #}
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}<div class="invalid-feedback d-block">{{ form.nombre.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Correo</label>
+                            {{ form.correo }}
+                            {% if form.correo.errors %}<div class="invalid-feedback d-block">{{ form.correo.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Celular</label>
+                            {{ form.celular }}
+                            {% if form.celular.errors %}<div class="invalid-feedback d-block">{{ form.celular.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rol</label>
+                            {{ form.rol }}
+                            {% if form.rol.errors %}<div class="invalid-feedback d-block">{{ form.rol.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Pago por hora</label>
+                            {{ form.pago_por_hora }}
+                            {% if form.pago_por_hora.errors %}<div class="invalid-feedback d-block">{{ form.pago_por_hora.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h6>Contraseña</h6>
+                    <p class="small text-muted">
+                        {% if form.instance.pk %}
+                            Para cambiar la contraseña será necesario introducir la contraseña de superusuario en el siguiente paso.
+                        {% else %}
+                            Define la contraseña inicial del empleado (opcional).
+                        {% endif %}
+                    </p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña</label>
+                        {{ form.password_plain }}
+                        {% if form.password_plain.errors %}<div class="invalid-feedback d-block">{{ form.password_plain.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        {{ form.activo }} <label class="form-check-label ms-2">Activo</label>
+                    </div>
+
+                    {# Hidden fields para enviar credenciales de superusuario (si aplican) #}
+                    <input type="hidden" name="su_username" id="su_username" value="">
+                    <input type="hidden" name="su_password" id="su_password" value="">
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" id="btnGuardar">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                        <a href="{% url 'empleados_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Modal para pedir credenciales de superusuario al cambiar contraseña en edición #}
+<div class="modal fade" id="suModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="suForm" onsubmit="return false;">
+                <div class="modal-header">
+                    <h5 class="modal-title">Autorización requerida</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Para cambiar la contraseña del empleado, ingresa las credenciales de superusuario.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Usuario superusuario (username o correo)</label>
+                        <input type="text" id="su_user" class="form-control" placeholder="superuser">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña del superusuario</label>
+                        <input type="password" id="su_pass" class="form-control" placeholder="Contraseña">
+                    </div>
+                    <div id="suError" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="suCancel" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="suConfirm" class="btn btn-primary">Confirmar y guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+    const form = document.getElementById('empleadoForm');
+    const isEdit = document.getElementById('is_edit').value === '1';
+    const pwdField = document.querySelector('[name="password_plain"]');
+    const suModalEl = document.getElementById('suModal');
+    const suModal = new bootstrap.Modal(suModalEl, {backdrop: 'static', keyboard: false});
+    const suConfirmBtn = document.getElementById('suConfirm');
+    const suError = document.getElementById('suError');
+
+    // Si no hay campo password_plain (por seguridad), salimos
+    if (!pwdField) return;
+
+    form.addEventListener('submit', function(e){
+        // Si estamos en edición y se ingresó una nueva contraseña -> requerir superuser
+        const newPwd = pwdField.value ? pwdField.value.trim() : '';
+        if (isEdit && newPwd.length > 0) {
+            // prevenir envío directo y abrir modal
+            e.preventDefault();
+            suError.classList.add('d-none');
+            // reset modal inputs
+            document.getElementById('su_user').value = '';
+            document.getElementById('su_pass').value = '';
+            suModal.show();
+            return false;
+        }
+        // en creación o si no se cambia contraseña, permitir envío normal
+    });
+
+    suConfirmBtn.addEventListener('click', function(){
+        const suUser = document.getElementById('su_user').value.trim();
+        const suPass = document.getElementById('su_pass').value;
+
+        if (!suUser || !suPass) {
+            suError.textContent = 'Por favor ingresa usuario y contraseña del superusuario.';
+            suError.classList.remove('d-none');
+            return;
+        }
+
+        // Copiar credenciales al formulario principal (se enviarán al servidor para validar)
+        document.getElementById('su_username').value = suUser;
+        document.getElementById('su_password').value = suPass;
+
+        // Cerrar modal y enviar formulario
+        suModal.hide();
+        // Pequeño delay para evitar problemas con el modal y submit simultáneo
+        setTimeout(function(){
+            form.submit();
+        }, 150);
+    });
+
+})();
+</script>
+{% endblock %}

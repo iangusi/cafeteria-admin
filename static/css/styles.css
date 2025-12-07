@@ -1,0 +1,198 @@
+:root{
+  --bg: #f7fafc;
+  --card-bg: #ffffff;
+  --muted: #6b7280;
+  --accent: #2563eb; /* blue-600 */
+  --success: #16a34a; /* green-600 */
+  --danger: #dc2626; /* red-600 */
+  --warn: #f59e0b; /* amber-500 */
+  --surface-border: #e6e9ef;
+  --glass: rgba(255,255,255,0.6);
+  --shadow: 0 6px 18px rgba(15,23,42,0.08);
+  --radius: 8px;
+  --font-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:var(--font-sans);
+  background: linear-gradient(180deg, var(--bg), #eef2f7 200px);
+  color:#0f172a;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-size:14px;
+  line-height:1.45;
+}
+
+/* Layout */
+.container{
+  max-width:1200px;
+  margin:28px auto;
+  padding:20px;
+}
+
+/* Navbar */
+nav{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px 20px;
+  background:linear-gradient(90deg,#0f172a,#0b1220);
+  color:white;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+nav a, nav button{
+  color:rgba(255,255,255,0.95);
+  text-decoration:none;
+  padding:8px 12px;
+  border-radius:6px;
+  transition:all .15s ease;
+  font-weight:600;
+  font-size:13px;
+}
+nav a:hover, nav button:hover{ transform:translateY(-1px); background:rgba(255,255,255,0.04) }
+
+/* Card */
+.card{
+  background:var(--card-bg);
+  border-radius:var(--radius);
+  padding:18px;
+  border:1px solid var(--surface-border);
+  box-shadow:var(--shadow);
+  margin-bottom:18px;
+}
+
+/* Tables */
+.table{
+  width:100%;
+  border-collapse:collapse;
+  background:transparent;
+  overflow:hidden;
+  border-radius:8px;
+}
+.table thead th{
+  text-align:left;
+  padding:12px 14px;
+  background:linear-gradient(180deg,#f1f5f9,#ffffff);
+  border-bottom:1px solid var(--surface-border);
+  color:#111827;
+  font-weight:700;
+  font-size:13px;
+}
+.table tbody td{
+  padding:12px 14px;
+  border-bottom:1px solid #f1f5f9;
+  vertical-align:middle;
+}
+.table tbody tr:nth-child(even){
+  background:transparent;
+}
+
+/* Status badges */
+.badge{
+  display:inline-block;
+  padding:6px 8px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  color:white;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+}
+.badge.cumplida{ background:linear-gradient(90deg,var(--success),#059669); box-shadow:0 2px 6px rgba(16,185,129,0.12) }
+.badge.faltante{ background:linear-gradient(90deg,var(--danger),#ef4444); box-shadow:0 2px 6px rgba(239,68,68,0.12) }
+.badge.pendiente{ background:linear-gradient(90deg,var(--warn),#f97316); box-shadow:0 2px 6px rgba(245,158,11,0.09) }
+
+/* Editable pill */
+.pill{
+  display:inline-block;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  background:#f3f4f6;
+  color:#374151;
+  border:1px solid #e6e9ef;
+}
+
+/* Hours display */
+.hours {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:700;
+  color:#0f172a;
+}
+.hours .decimal{
+  font-size:16px;
+  background:linear-gradient(90deg,#eef2ff,#fff);
+  padding:6px 10px;
+  border-radius:6px;
+  border:1px solid #e6eefc;
+}
+.hours .hhmm{
+  font-size:13px;
+  color:var(--muted);
+}
+
+/* Inventory low alert row */
+.row-low {
+  background: linear-gradient(90deg,#fff5f5, #fff7f2);
+  border-left:4px solid rgba(220,38,38,0.12);
+}
+.row-warning {
+  background: linear-gradient(90deg,#fffbeb,#ffffff);
+  border-left:4px solid rgba(245,158,11,0.12);
+}
+
+/* Stock meter (progress bar) */
+.stock {
+  width:160px;
+  height:12px;
+  background:#f1f5f9;
+  border-radius:999px;
+  overflow:hidden;
+  display:inline-block;
+  vertical-align:middle;
+  border:1px solid #eef2f7;
+}
+.stock > i {
+  display:block;
+  height:100%;
+  width:0%;
+  background: linear-gradient(90deg,#34d399,#10b981); /* green */
+  transition:width .6s ease, background .3s ease;
+}
+
+/* Low/critical colors */
+.stock.low > i { background: linear-gradient(90deg,#f59e0b,#f97316) } /* amber */
+.stock.critical > i { background: linear-gradient(90deg,#f97316,#ef4444) } /* red */
+
+/* Actions */
+.actions a, .actions button{
+  color:var(--accent);
+  text-decoration:none;
+  margin-right:8px;
+  font-weight:600;
+}
+
+/* Responsive */
+@media (max-width:900px){
+  .table thead { display:none; }
+  .table tbody td {
+    display:block;
+    width:100%;
+    box-sizing:border-box;
+  }
+  .table tbody tr { margin-bottom:12px; border-radius:8px; background:var(--card-bg); padding:10px; box-shadow:var(--shadow) }
+}
+
+/* Small helpers */
+.kpi {
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.kpi .value { font-size:20px; font-weight:800; color:#0f172a; }
+.kpi .label { color:var(--muted); font-size:13px; }

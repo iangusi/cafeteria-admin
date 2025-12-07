@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+
+{% block title %}Horarios - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-calendar-alt"></i> Gestión de Horarios</h1>
+</div>
+
+<!-- Filtros -->
+<div class="filtro-container">
+    <h5><i class="fas fa-filter"></i> Seleccionar Semana</h5>
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Fecha de Referencia</label>
+            <input type="date" class="form-control" name="fecha" value="{{ fecha_seleccionada|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search"></i> Ir
+            </button>
+        </div>
+        <div class="col-md-6 text-end">
+            <p class="text-muted mb-0">
+                <strong>Semana del {{ lunes|date:'d \d\e F' }} al {{ lunes|add:'6d'|date:'d \d\e F \d\e Y' }}</strong>
+            </p>
+        </div>
+    </form>
+</div>
+
+<!-- Horarios por día -->
+<div class="row">
+    {% for dia in dias_semana %}
+    <div class="col-lg-3 col-md-3 col-sm-6 mb-4">
+        <div class="card">
+            <!-- Header del día -->
+            <div class="card-header {% if dia.es_futuro %}bg-light{% else %}bg-white{% endif %}">
+                <h5 class="mb-0">
+                    <strong>{{ dia.nombre }}</strong><br>
+                    <small class="text-muted">{{ dia.fecha|date:'d/m/Y' }}</small>
+                </h5>
+            </div>
+
+            <!-- Bloques de horarios / asistencias -->
+            <div class="card-body p-1" id="dia-{{ dia.numero }} h-100">
+                {% for bloque in horarios_por_dia|get_item:dia.numero %}
+                    <div class="p-3 mb-2 rounded estado-{{ bloque.estado }}">
+                        <strong>{{ bloque.empleado.nombre }}</strong>
+
+                        <!-- Mostrar horario si existe -->
+                        {% if bloque.horario %}
+                        <div class="mt-1 small">
+                            <strong>Horario:</strong>
+                            {{ bloque.hora_inicio|time:'H:i' }} - {{ bloque.hora_fin|time:'H:i' }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Mostrar asistencia si existe -->
+                        {% if bloque.asistencia %}
+                        <div class="mt-1 small">
+                            <strong>Asistencia:</strong>
+                            {% if bloque.asistencia.hora_entrada %}{{ bloque.asistencia.hora_entrada|time:'H:i:s' }}{% else %}<span class="text-muted">—</span>{% endif %}
+                             - 
+                            {% if bloque.asistencia.hora_salida %}{{ bloque.asistencia.hora_salida|time:'H:i:s' }}{% else %}<span class="text-muted">—</span>{% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Acciones: editar/eliminar solo si existe horario y si es futuro -->
+                        {% if bloque.horario and dia.es_futuro %}
+                        <div class="mt-2 d-flex gap-1">
+                            <a href="{% url 'horario_editar' bloque.horario.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'horario_eliminar' bloque.horario.pk %}" class="btn btn-sm btn-danger" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <p class="text-muted text-center mb-0">Sin horarios</p>
+                {% endfor %}
+            </div>
+
+            <!-- Botón para agregar horario (solo si es futuro) -->
+            {% if dia.es_futuro %}
+            <div class="card-footer">
+                <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalAgregarHorario{{ dia.numero }}">
+                    <i class="fas fa-plus"></i> Agregar
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal para agregar horario (sin cambios) -->
+    <div class="modal fade" id="modalAgregarHorario{{ dia.numero }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar Horario - {{ dia.nombre }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="{% url 'horario_crear' %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <input type="hidden" name="dia_semana" value="{{ dia.numero }}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Empleado</label>
+                            <select class="form-select" name="empleado" required>
+                                <option value="">-- Seleccionar empleado --</option>
+                                {% for empleado in empleados %}
+                                <option value="{{ empleado.pk }}">{{ empleado.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Hora de Inicio</label>
+                            <input type="time" class="form-control" name="hora_inicio" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Hora de Fin</label>
+                            <input type="time" class="form-control" name="hora_fin" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% endfor %}
+</div>
+
+<!-- Leyenda de colores -->
+<div class="mt-4 p-4 bg-light rounded">
+    <h6 class="mb-3"><i class="fas fa-info-circle"></i> Leyenda de Estados</h6>
+    <div class="row">
+        <div class="col-md-3">
+            <div class="p-2 rounded estado-blanco mb-2">
+                <strong>Blanco</strong> - Fecha futura
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-2 rounded estado-rojo mb-2">
+                <strong>Rojo</strong> - Sin asistencia / falta
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-2 rounded estado-amarillo mb-2">
+                <strong>Amarillo</strong> - Asistencia parcial
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-2 rounded estado-verde mb-2">
+                <strong>Verde</strong> - Asistencia completa
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

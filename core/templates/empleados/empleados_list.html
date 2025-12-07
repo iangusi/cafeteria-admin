@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Empleados - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-users"></i> Gestión de Empleados</h1>
+    <a href="{% url 'empleado_crear' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Agregar Empleado
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="filtro-container">
+    <h5><i class="fas fa-filter"></i> Filtros</h5>
+    <form method="get" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Fecha Inicio</label>
+            <input type="date" class="form-control" name="fecha_inicio" value="{{ fecha_inicio|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Fecha Fin</label>
+            <input type="date" class="form-control" name="fecha_fin" value="{{ fecha_fin|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Rol</label>
+            <select class="form-select" name="rol">
+                <option value="">-- Todos los roles --</option>
+                <option value="barista" {% if request.GET.rol == 'barista' %}selected{% endif %}>Barista</option>
+                <option value="mesero" {% if request.GET.rol == 'mesero' %}selected{% endif %}>Mesero</option>
+                <option value="gerente" {% if request.GET.rol == 'gerente' %}selected{% endif %}>Gerente</option>
+                <option value="cocinero" {% if request.GET.rol == 'cocinero' %}selected{% endif %}>Cocinero</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">&nbsp;</label>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-search"></i> Filtrar
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Tabla de Empleados -->
+{% if empleados %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Empleado</th>
+                <th>Contacto</th>
+                <th>Rol</th>
+                <th>Horas Trabajadas</th>
+                <th>Horas Asignadas</th>
+                <th>Pago/Hora</th>
+                <th>Pago Final</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in empleados %}
+            <tr>
+                <td>
+                    <strong>{{ item.empleado.nombre }}</strong>
+                </td>
+                <td>
+                    <small>
+                        <div><i class="fas fa-envelope"></i> {{ item.empleado.correo }}</div>
+                        <div><i class="fas fa-phone"></i> {{ item.empleado.celular }}</div>
+                    </small>
+                </td>
+                <td>
+                    <span class="badge bg-info">{{ item.empleado.get_rol_display }}</span>
+                </td>
+                <td>
+                    <strong>{{ item.horas_trabajadas }}</strong> h
+                </td>
+                <td>
+                    <strong>{{ item.horas_asignadas }}</strong> h
+                </td>
+                <td>${{ item.empleado.pago_por_hora }}</td>
+                <td>
+                    <strong class="text-success">${{ item.pago_final }}</strong>
+                </td>
+                <td>
+                    <a href="{% url 'empleado_editar' item.empleado.pk %}" class="btn btn-sm btn-warning btn-accion">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a href="{% url 'empleado_eliminar' item.empleado.pk %}" class="btn btn-sm btn-danger btn-accion">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginación -->
+{% if is_paginated %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="? page=1{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Primera</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Anterior</a>
+            </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        </li>
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Siguiente</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Última</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle"></i> No hay empleados registrados.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar Horario - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación de Horario</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">
+                    ¿Estás seguro de que deseas eliminar el siguiente horario?
+                </p>
+                
+                <div class="alert alert-warning">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-user"></i> Empleado:</strong><br>
+                            {{ horario.empleado.nombre }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-calendar"></i> Día:</strong><br>
+                            {{ horario.get_dia_semana_display }}
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-clock"></i> Hora de Inicio:</strong><br>
+                            {{ horario.hora_inicio|time:'H:i' }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong><i class="fas fa-clock"></i> Hora de Fin:</strong><br>
+                            {{ horario.hora_fin|time:'H:i' }}
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div>
+                        {% load custom_filters %}
+                        <strong><i class="fas fa-calendar-check"></i> Fecha de la Semana:</strong><br>
+                        {{ horario.fecha|add_days:horario.dia_semana|date:'d/m/Y' }} (Lunes de la semana)
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Advertencia:</strong> Esta acción no se puede deshacer. El horario será eliminado de forma permanente.
+                </div>
+            </div>
+            <div class="card-footer">
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Eliminar Horario
+                    </button>
+                    <a href="{% url 'horarios_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

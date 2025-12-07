@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ producto.nombre }} - Detalle{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="fas fa-box-open"></i> {{ producto.nombre }}</h1>
+        <div class="small text-muted">{{ producto.descripcion }}</div>
+    </div>
+    <div class="text-end">
+        <a href="{% url 'producto_editar' producto.pk %}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+        <a href="{% url 'producto_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Volver</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="p-3 bg-light rounded">
+            <strong>Precio venta</strong><br>
+            <span class="h4">${{ producto.precio_venta }}</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="p-3 bg-light rounded">
+            <strong>Costo receta</strong><br>
+            <span class="h4">${{ costo_total|floatformat:2 }}</span>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="p-3 bg-light rounded">
+            <strong>Margen</strong><br>
+            <span class="h4">
+                {% if margen_ganancia %}{{ margen_ganancia }}%{% else %}—{% endif %}
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Receta</strong>
+        <a href="{% url 'agregar_receta' producto.pk %}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Agregar Insumo</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Insumo</th>
+                        <th>Cantidad</th>
+                        <th>Unidad</th>
+                        <th>Costo unitario</th>
+                        <th>Costo total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in receta %}
+                    <tr>
+                        <td>{{ item.insumo.nombre }}</td>
+                        <td>{{ item.cantidad }} {{ item.get_unidad_display }}</td>
+                        <td>{{ item.insumo.get_unidad_display }}</td>
+                        <td>${{ item.insumo.costo_por_unidad }}</td>
+                        <td>${{ item.costo_total|floatformat:2 }}</td>
+                        <td>
+                            <a href="{% url 'editar_receta' item.pk %}" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'eliminar_receta' item.pk %}" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No hay insumos en la receta.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

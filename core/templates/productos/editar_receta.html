@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Editar insumo de receta{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="fas fa-edit"></i> Editar Insumo en receta - {{ receta.producto.nombre }}</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+
+                {# Mostrar errores no field y errores generales del form #}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    <strong>Errores en el formulario:</strong>
+                    <ul class="mb-0">
+                        {% for field, errors in form.errors.items %}
+                            <li><strong>{{ field }}:</strong>
+                                <ul class="mb-0">
+                                    {% for e in errors %}
+                                        <li>{{ e }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Insumo</label>
+                        {# Mostrar el nombre del insumo como texto para el usuario #}
+                        <input type="text" class="form-control" value="{{ receta.insumo.nombre }}" readonly>
+                        {# IMPORTANT: incluir el id del insumo en un campo hidden para que el POST lo envíe #}
+                        <input type="hidden" name="insumo" value="{{ receta.insumo.pk }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad</label>
+                        {{ form.cantidad }}
+                        {% if form.cantidad.errors %}<div class="invalid-feedback d-block">{{ form.cantidad.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Unidad</label>
+                        {{ form.unidad }}
+                        {% if form.unidad.errors %}<div class="invalid-feedback d-block">{{ form.unidad.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+                        <a href="{% url 'producto_detalle' receta.producto.pk %}" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

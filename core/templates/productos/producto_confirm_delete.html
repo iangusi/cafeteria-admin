@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Desactivar Producto - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Confirmar desactivación</h5>
+            </div>
+            <div class="card-body">
+                <p>¿Deseas desactivar el producto <strong>{{ object.nombre }}</strong>?</p>
+                <p class="small text-muted">Se conservarán los datos y recetas en la base de datos.</p>
+                <p><strong>Precio venta:</strong> ${{ object.precio_venta }}</p>
+            </div>
+            <div class="card-footer">
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning"><i class="fas fa-ban"></i> Desactivar</button>
+                    <a href="{% url 'producto_list' %}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

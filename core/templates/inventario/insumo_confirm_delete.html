@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Desactivar Insumo - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Confirmar desactivación de insumo</h5>
+            </div>
+            <div class="card-body">
+                <p>¿Deseas desactivar el insumo <strong>{{ object.nombre }}</strong>?</p>
+                <p class="small text-muted">Se conservarán los datos en la base de datos, pero no aparecerá en listas activas.</p>
+
+                <ul class="list-unstyled">
+                    <li><strong>Cantidad:</strong> {{ object.cantidad }} {{ object.get_unidad_display }}</li>
+                    <li><strong>Cantidad mínima:</strong> {{ object.cantidad_min }} {{ object.get_unidad_display }}</li>
+                    <li><strong>Costo por unidad:</strong> ${{ object.costo_por_unidad }}</li>
+                </ul>
+            </div>
+            <div class="card-footer">
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning"><i class="fas fa-ban"></i> Desactivar</button>
+                    <a href="{% url 'insumo_list' %}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-user-friends"></i> Clientes</h1>
+    <a href="{% url 'cliente_crear' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Agregar Cliente</a>
+</div>
+
+<div class="filtro-container mb-3">
+    <form method="get" class="row g-2">
+        <div class="col-md-6">
+            <input type="text" name="q" class="form-control" placeholder="Buscar por nombre o correo" value="{{ request.GET.q }}">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100"><i class="fas fa-search"></i> Buscar</button>
+        </div>
+    </form>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Celular</th>
+                <th>Puntos</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in clientes %}
+            <tr>
+                <td><strong>{{ cliente.nombre }}</strong><div class="small text-muted">Creado: {{ cliente.fecha_creacion|date:'d/m/Y' }}</div></td>
+                <td>{% if cliente.correo %}{{ cliente.correo }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                <td>{% if cliente.celular %}{{ cliente.celular }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                <td>{{ cliente.puntos }}</td>
+                <td>
+                    <a href="{% url 'cliente_editar' cliente.pk %}" class="btn btn-sm btn-warning btn-accion"><i class="fas fa-edit"></i></a>
+                    <a href="{% url 'cliente_eliminar' cliente.pk %}" class="btn btn-sm btn-danger btn-accion"><i class="fas fa-trash"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No hay clientes registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<nav aria-label="Page navigation" class="mt-3">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page=1{% if request.GET %}&{{ request.GET.urlencode }}{% endif %}">Primera</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET %}&{{ request.GET.urlencode }}{% endif %}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET %}&{{ request.GET.urlencode }}{% endif %}">Siguiente</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET %}&{{ request.GET.urlencode }}{% endif %}">Última</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Eliminar insumo de receta{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Confirmar eliminación</h5>
+            </div>
+            <div class="card-body">
+                <p>¿Deseas eliminar <strong>{{ receta.insumo.nombre }}</strong> de la receta del producto <strong>{{ receta.producto.nombre }}</strong>?</p>
+                <p class="small text-muted">Esta acción quitará el insumo de la receta.</p>
+            </div>
+            <div class="card-footer">
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Eliminar</button>
+                    <a href="{% url 'producto_detalle' receta.producto.pk %}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

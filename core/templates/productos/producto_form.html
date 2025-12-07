@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}{% if form.instance.pk %}Editar Producto{% else %}Nuevo Producto{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h3>{% if form.instance.pk %}Editar Producto{% else %}Nuevo Producto{% endif %}</h3>
+
+        <form method="post" id="productoForm">
+            {% csrf_token %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    {{ form.non_field_errors }}
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}<div class="invalid-feedback d-block">{{ form.nombre.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Precio de venta</label>
+                        {{ form.precio_venta }}
+                        {% if form.precio_venta.errors %}<div class="invalid-feedback d-block">{{ form.precio_venta.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}<div class="invalid-feedback d-block">{{ form.descripcion.errors }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        {{ form.activo }} <label class="form-check-label ms-2">Activo</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Receta: inline formset -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>Receta</strong>
+                    <button type="button" class="btn btn-sm btn-primary" id="add-recipe-row">Añadir insumo</button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="p-3">
+                        {% if formset.non_form_errors %}
+                        <div class="alert alert-danger">
+                            {% for err in formset.non_form_errors %}
+                                <div>{{ err }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Insumo</th>
+                                <th>Cantidad</th>
+                                <th>Unidad</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="formset-body">
+                            {{ formset.management_form }}
+                            {% for form_rec in formset.forms %}
+                            <tr class="formset-row">
+                                <td style="width:45%">
+                                    {{ form_rec.insumo }}
+                                    {% if form_rec.insumo.errors %}<div class="invalid-feedback d-block">{{ form_rec.insumo.errors }}</div>{% endif %}
+                                </td>
+                                <td style="width:25%">
+                                    {{ form_rec.cantidad }}
+                                    {% if form_rec.cantidad.errors %}<div class="invalid-feedback d-block">{{ form_rec.cantidad.errors }}</div>{% endif %}
+                                </td>
+                                <td style="width:20%">
+                                    {{ form_rec.unidad }}
+                                    {% if form_rec.unidad.errors %}<div class="invalid-feedback d-block">{{ form_rec.unidad.errors }}</div>{% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div style="display:none;">{{ form_rec.DELETE }}</div>
+                                    <button type="button" class="btn btn-sm btn-danger remove-row">X</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <div id="empty-form-template" style="display:none;">
+                        <table>
+                            {{ empty_form_html|safe }}
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Guardar producto</button>
+                <a href="{% url 'producto_list' %}" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const addBtn = document.getElementById('add-recipe-row');
+    const formsetBody = document.getElementById('formset-body');
+
+    function getTotalFormsInput() {
+        return document.querySelector('[name$="-TOTAL_FORMS"]');
+    }
+
+    // Obtener plantilla "empty_form" renderizada del servidor (table > tr > td...). 
+    // empty_form_html contiene el inner table de empty_form; ahí encontraremos inputs con __prefix__.
+    const emptyTemplateWrapper = document.getElementById('empty-form-template');
+    let emptyFormHtml = null;
+    if (emptyTemplateWrapper) {
+        // extraemos la fila <tr> desde empty_form.as_table
+        // empty_form.as_table typically produces a <tr><th>..</th><td>..</td></tr> per field; 
+        // we will build a <tr> with the td inputs by extracting inputs from it.
+        emptyFormHtml = emptyTemplateWrapper.innerHTML;
+    }
+
+    function buildRowFromEmpty(index) {
+        // Replace __prefix__ with index in the emptyFormHtml
+        if (!emptyFormHtml) {
+            // fallback: clone last row if present
+            const last = formsetBody.querySelector('.formset-row:last-of-type');
+            if (!last) return null;
+            const clone = last.cloneNode(true);
+            // update names/ids indices
+            clone.querySelectorAll('input, select, textarea').forEach(function(el){
+                if (!el.name) return;
+                el.name = el.name.replace(/\-\d+\-/, '-' + index + '-');
+                el.id = el.id.replace(/\-\d+\-/, '-' + index + '-');
+                if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+                else el.value = '';
+            });
+            // uncheck delete hidden
+            const deleteInput = clone.querySelector('input[name$="-DELETE"]');
+            if (deleteInput) {
+                if (deleteInput.type === 'checkbox') {
+                    deleteInput.checked = false;
+                } else {
+                    deleteInput.value = '';
+                }
+            }
+            return clone;
+        }
+        // When we have emptyFormHtml, it contains table rows for each field; we need to translate to <tr> with tds inputs.
+        // Simpler approach: create a temporary container and replace __prefix__ then extract inputs to build a new <tr>.
+        let html = emptyFormHtml.replace(/__prefix__/g, index);
+        // Create a wrapper and parse inputs
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        // Build a row and collect inputs/selects rendered by empty_form
+        const inputs = wrapper.querySelectorAll('input, select, textarea');
+        const row = document.createElement('tr');
+        row.classList.add('formset-row');
+
+        // We expect the empty_form.as_table to render each field in its own row; we'll group inputs by field order:
+        // For simplicity, create three tds: insumo (select), cantidad (input), unidad (select) and action td.
+        const tdInsumo = document.createElement('td'); tdInsumo.style.width = '45%';
+        const tdCantidad = document.createElement('td'); tdCantidad.style.width = '25%';
+        const tdUnidad = document.createElement('td'); tdUnidad.style.width = '20%';
+        const tdAccion = document.createElement('td'); tdAccion.className = 'text-center';
+
+        // Try to find by name suffix
+        inputs.forEach(function(inp){
+            if (!inp.name) return;
+            if (inp.name.indexOf('-insumo') !== -1) {
+                tdInsumo.appendChild(inp.cloneNode(true));
+            } else if (inp.name.indexOf('-cantidad') !== -1) {
+                tdCantidad.appendChild(inp.cloneNode(true));
+            } else if (inp.name.indexOf('-unidad') !== -1) {
+                tdUnidad.appendChild(inp.cloneNode(true));
+            } else if (inp.name.indexOf('-DELETE') !== -1) {
+                // hidden delete input
+                const hide = inp.cloneNode(true);
+                hide.style.display = 'none';
+                tdAccion.appendChild(hide);
+            } else {
+                // ignore
+            }
+        });
+
+        // Remove-button
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-danger remove-row';
+        btn.textContent = 'X';
+        tdAccion.appendChild(btn);
+
+        row.appendChild(tdInsumo);
+        row.appendChild(tdCantidad);
+        row.appendChild(tdUnidad);
+        row.appendChild(tdAccion);
+
+        return row;
+    }
+
+    addBtn.addEventListener('click', function(){
+        const totalFormsInput = getTotalFormsInput();
+        if (!totalFormsInput) {
+            console.error('No se encontró TOTAL_FORMS en management_form');
+            return;
+        }
+        let total = parseInt(totalFormsInput.value, 10);
+        const newRow = buildRowFromEmpty(total);
+        if (!newRow) {
+            console.error('No se pudo crear nueva fila del formset');
+            return;
+        }
+        formsetBody.appendChild(newRow);
+        totalFormsInput.value = total + 1;
+
+        // attach remove handler
+        newRow.querySelectorAll('.remove-row').forEach(function(btn){
+            btn.addEventListener('click', removeHandler);
+        });
+    });
+
+    function removeHandler(e){
+        const row = e.target.closest('.formset-row');
+        // marcar checkbox/delete hidden si existe
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+        if (deleteInput) {
+            // if it's checkbox, check it; if hidden, set value to 'on' (some setups)
+            if (deleteInput.type === 'checkbox') {
+                deleteInput.checked = true;
+            } else {
+                deleteInput.value = 'on';
+            }
+            row.style.display = 'none';
+        } else {
+            // physical remove and decrement TOTAL_FORMS
+            row.remove();
+            const totalFormsInput = getTotalFormsInput();
+            let total = parseInt(totalFormsInput.value, 10);
+            totalFormsInput.value = String(Math.max(0, total - 1));
+        }
+    }
+
+    // attach remove handlers to existing rows
+    document.querySelectorAll('.remove-row').forEach(function(btn){
+        btn.addEventListener('click', removeHandler);
+    });
+
+});
+</script>
+{% endblock %}

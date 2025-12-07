@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} - CafeteríAdmin{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fas fa-clock"></i> {{ titulo }}
+</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" id="horarioForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.empleado.id_for_label }}" class="form-label">Empleado *</label>
+                        {{ form.empleado }}
+                        {% if form.empleado.errors %}
+                            <div class="invalid-feedback d-block">{{ form.empleado.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.dia_semana.id_for_label }}" class="form-label">Día de la Semana *</label>
+                        {{ form.dia_semana }}
+                        {% if form.dia_semana.errors %}
+                            <div class="invalid-feedback d-block">{{ form.dia_semana.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.hora_inicio.id_for_label }}" class="form-label">Hora de Inicio *</label>
+                                {{ form.hora_inicio }}
+                                {% if form.hora_inicio.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.hora_inicio.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.hora_fin.id_for_label }}" class="form-label">Hora de Fin *</label>
+                                {{ form.hora_fin }}
+                                {% if form.hora_fin.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.hora_fin.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info d-none" id="alertaHora" role="alert">
+                        <i class="fas fa-info-circle"></i> 
+                        <span id="mensajeAlerta"></span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                        <a href="{% url 'horarios_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('horarioForm').addEventListener('submit', function(e) {
+    const horaInicio = document.querySelector('[name="hora_inicio"]').value;
+    const horaFin = document.querySelector('[name="hora_fin"]').value;
+    
+    if (horaInicio && horaFin) {
+        if (horaInicio >= horaFin) {
+            e.preventDefault();
+            const alerta = document.getElementById('alertaHora');
+            const mensaje = document.getElementById('mensajeAlerta');
+            mensaje.textContent = 'La hora de fin debe ser posterior a la hora de inicio.';
+            alerta.classList.remove('d-none');
+            window.scrollTo(0, 0);
+            return false;
+        }
+    }
+});
+</script>
+{% endblock %}
