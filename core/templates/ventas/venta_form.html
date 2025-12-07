@@ -1,308 +1,190 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load static %}
-{% block title %}{% if creating %}Crear Venta{% else %}Editar Venta{% endif %}{% endblock %}
-
 {% block content %}
-<div class="row">
-    <div class="col-md-8">
-        <h3>{% if creating %}Crear Venta{% else %}Editar Venta{% endif %}</h3>
+<h1>{% if creating %}Crear Venta{% else %}Editar Venta{% endif %}</h1>
 
-        <form method="post" id="ventaMasterForm">
-            {% csrf_token %}
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Título</label>
-                        {{ form.titulo }}
-                    </div>
+<form method="post" id="venta-form">
+  {% csrf_token %}
+  <div class="mb-3">
+    {{ form.titulo.label_tag }} {{ form.titulo }}
+  </div>
+  <div class="mb-3">
+    {{ form.cliente.label_tag }} {{ form.cliente }}
+    <button type="button" id="crear-cliente-btn" class="btn btn-sm btn-outline-secondary">Crear cliente</button>
+  </div>
 
-                    <div class="mb-3 d-flex gap-2 align-items-start">
-                        <div style="flex:1">
-                            <label class="form-label">Cliente</label>
-                            {{ form.cliente }}
-                        </div>
-                        <div class="pt-3">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnCreateClient" data-bs-toggle="modal" data-bs-target="#modalCreateClient">Crear cliente</button>
-                        </div>
-                    </div>
+  <h3>Productos</h3>
+  <table class="table table-sm" id="items-table">
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Cantidad</th>
+        <th>Precio c/u</th>
+        <th>Subtotal</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ formset.management_form }}
+      {% for form_item in formset.forms %}
+      <tr data-form-index="{{ forloop.counter0 }}">
+        <td>
+          {{ form_item.producto }}
+        </td>
+        <td>
+          {{ form_item.cantidad }}
+        </td>
+        <td class="precio-cell">
+          {% comment %} mostramos precio actual del producto (si está cargado en el item) {% endcomment %}
+          {% with item=form_item.instance %}
+            ${{ item.precio|default:"0.00" }}
+          {% endwith %}
+        </td>
+        <td class="subtotal-cell">
+          {% with item=form_item.instance %}
+            ${{ item.precio|default:"0.00"|floatformat:2|add:"0" }}{% comment %} se actualizará por JS {% endcomment %}
+          {% endwith %}
+        </td>
+        <td>
+          <button type="button" class="btn btn-sm btn-outline-secondary personalizar-btn">Personalizar</button>
+          {{ form_item.DELETE }}
+          <button type="button" class="btn btn-sm btn-danger remove-row-btn">Eliminar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="usarPuntosToggle" {% if venta and venta.puntos_usados %}checked{% endif %}>
-                        <label class="form-check-label" for="usarPuntosToggle">Usar puntos del cliente automáticamente (min)</label>
-                    </div>
+  <div class="mt-3">
+    <button type="submit" class="btn btn-primary">Guardar venta</button>
+    <a href="{% url 'ventas_list' %}" class="btn btn-secondary">Volver</a>
+  </div>
+</form>
 
-                </div>
-            </div>
-
-            <!-- Items table (formset) -->
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <strong>Productos</strong>
-                    <button type="button" id="addRowBtn" class="btn btn-sm btn-primary">Agregar producto</button>
-                </div>
-
-                <div class="card-body p-0">
-                    <div class="p-3">
-                        {% if formset.non_form_errors %}
-                            <div class="alert alert-danger">
-                                {% for e in formset.non_form_errors %}{{ e }}<br>{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <table class="table mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width:10%">Cant.</th>
-                                <th style="width:45%">Producto</th>
-                                <th style="width:35%">Receta (compacta)</th>
-                                <th style="width:10%">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsBody">
-                            {{ formset.management_form }}
-                            {% for form_item in formset.forms %}
-                            <tr class="item-row">
-                                <td>{{ form_item.cantidad }}</td>
-                                <td>{{ form_item.producto }}</td>
-                                <td class="small text-muted">
-                                    {% with prod=form_item.instance.producto %}
-                                        {% if form_item.instance.receta_items.all %}
-                                            {% for r in form_item.instance.receta_items.all %}
-                                                {{ r.insumo.nombre }} {{ r.cantidad }}{{ r.unidad }}{% if not forloop.last %}, {% endif %}
-                                            {% endfor %}
-                                        {% elif prod %}
-                                            {% for pr in prod.receta_items.all|slice:":4" %}
-                                                {{ pr.insumo.nombre }} {{ pr.cantidad }}{{ pr.unidad }}{% if not forloop.last %}, {% endif %}
-                                            {% endfor %}
-                                            {% if prod.receta_items.count > 4 %} ...{% endif %}
-                                        {% endif %}
-                                    {% endwith %}
-                                </td>
-                                <td>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-personalize" data-producto-id="{{ form_item.instance.producto.pk if form_item.instance.producto }}">{{ form_item.instance.producto and "Personalizar" or "Personalizar" }}</button>
-                                    <button type="button" class="btn btn-sm btn-danger btn-remove-row">Eliminar</button>
-                                    {{ form_item.DELETE }} {# hidden checkbox managed by JS #}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-
-                    {# empty_form template for JS cloning #}
-                    <div id="empty-form" style="display:none;">
-                        {{ formset.empty_form.as_table }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Totales -->
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div>Precio total: <strong id="precioTotal">${{ venta.precio_total_cache|default:'0.00' }}</strong></div>
-                    <div>Costo total: <strong id="costoTotal">${{ venta.costo_total_cache|default:'0.00' }}</strong></div>
-                    <div>Puntos usados: <strong id="puntosUsados">{{ venta.puntos_usados|default:'0' }}</strong></div>
-                    <div>Precio final: <strong id="precioFinal">${{ venta.precio_final|default:venta.precio_total_cache|default:'0.00' }}</strong></div>
-                </div>
-            </div>
-
-            <!-- Acciones -->
-            <div class="d-flex gap-2 mb-4">
-                <a href="{% url 'ventas_list' %}" class="btn btn-secondary">Regresar</a>
-                {% if creating %}
-                    <button type="submit" class="btn btn-outline-danger" formaction="{% url 'venta_cancel' venta.pk %}" formmethod="post">Cancelar venta</button>
-                {% endif %}
-                <button type="submit" class="btn btn-primary" id="btnSave">Guardar venta</button>
-                {% if not creating %}
-                    <button type="submit" class="btn btn-success" formaction="{% url 'venta_finalize' venta.pk %}" formmethod="post">Finalizar</button>
-                {% endif %}
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal: crear cliente -->
-<div class="modal fade" id="modalCreateClient" tabindex="-1">
-  <div class="modal-dialog">
-    <form id="clientCreateForm">
-      <div class="modal-content">
-        <div class="modal-header"><h5>Crear Cliente</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label">Nombre</label>
-                <input name="nombre" class="form-control">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Correo</label>
-                <input name="correo" class="form-control" type="email">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Celular</label>
-                <input name="celular" class="form-control">
-            </div>
-            <div id="clientErrors" class="text-danger small"></div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-            <button type="button" id="createClientBtn" class="btn btn-primary">Crear</button>
-        </div>
+<!-- Modal para personalizar: abre un formulario pre-llenado (se crea producto via AJAX) -->
+<div class="modal fade" id="personalizarModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Personalizar producto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-    </form>
+      <div class="modal-body">
+        <!-- Aquí se inyectará el formulario duplicado del producto (o una versión embebida) -->
+        <form id="personalizar-form">
+          <div id="personalizar-form-fields">
+            <!-- campos precargados via JS -->
+          </div>
+          <div class="mt-2">
+            <button type="button" id="personalizar-crear-btn" class="btn btn-primary">Crear producto personalizado</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 
-{% endblock %}
-
-{% block extra_js %}
+<script src="{% static 'js/jquery.min.js' %}"></script>
 <script>
-(function(){
-    const csrfToken = "{{ csrf_token }}";
-    // Helper to get management TOTAL_FORMS field
-    function totalFormsInput() { return document.querySelector('[name$="-TOTAL_FORMS"]'); }
+$(function(){
+  // Actualiza subtotal cuando cambian cantidad o producto
+  $('#items-table').on('change', 'select, input', function(){
+    updateRowSubtotal($(this).closest('tr'));
+  });
 
-    // Add row logic using empty_form
-    const addBtn = document.getElementById('addRowBtn');
-    const itemsBody = document.getElementById('itemsBody');
-    const emptyFormHtml = document.getElementById('empty-form') ? document.getElementById('empty-form').innerHTML : null;
+  function updateRowSubtotal($tr){
+    // intenta leer precio desde el select (opción seleccionada) o desde instancia (si está)
+    var precio = 0;
+    var sel = $tr.find('select');
+    if(sel.length){
+      var opt = sel.find('option:selected');
+      // asumo que cada option tiene data-precio con precio del producto
+      precio = parseFloat(opt.data('precio') || opt.attr('data-precio') || 0);
+    }
+    var cantidad = parseInt($tr.find('input[type="number"]').val() || 0);
+    var subtotal = (precio * cantidad) || 0;
+    $tr.find('.precio-cell').text('$' + precio.toFixed(2));
+    $tr.find('.subtotal-cell').text('$' + subtotal.toFixed(2));
+  }
 
-    addBtn && addBtn.addEventListener('click', function(){
-        const totalInput = totalFormsInput();
-        if (!totalInput) return;
-        let index = parseInt(totalInput.value, 10);
-        // empty_form.as_table contains multiple <tr><th>...; <td>...</td></tr> lines. We'll extract inputs and build a row.
-        if (!emptyFormHtml) {
-            alert('Imposible agregar fila: plantilla no encontrada.');
-            return;
+  // Eliminar fila (marcar DELETE en management form)
+  $('#items-table').on('click', '.remove-row-btn', function(){
+    var $tr = $(this).closest('tr');
+    // si el formset tiene checkbox DELETE, marcarlo; si no, remover el tr y ajustar management form
+    var $deleteInput = $tr.find('input[type="checkbox"][name$="-DELETE"]');
+    if($deleteInput.length){
+      $deleteInput.prop('checked', true);
+      $tr.hide();
+    } else {
+      $tr.remove();
+      // TODO: si tienes un botón "agregar fila" deberías incrementar TOTAL_FORMS etc.
+    }
+  });
+
+  // Personalizar: abrir modal y prellenar con producto actual (usando data del select)
+  var currentRowIndex = null;
+  $('#items-table').on('click', '.personalizar-btn', function(){
+    var $tr = $(this).closest('tr');
+    currentRowIndex = $tr.data('form-index');
+    var $sel = $tr.find('select');
+    var productoId = $sel.val();
+    var productoNombre = $sel.find('option:selected').text();
+    var productoPrecio = $sel.find('option:selected').data('precio') || 0;
+
+    // Prellenamos el modal con campos mínimos para duplicar producto
+    $('#personalizar-form-fields').html(`
+      <div class="mb-2">
+        <label>Nombre</label>
+        <input type="text" id="p_nombre" class="form-control" value="${productoNombre}">
+      </div>
+      <div class="mb-2">
+        <label>Precio</label>
+        <input type="number" id="p_precio" class="form-control" value="${productoPrecio}" step="0.01">
+      </div>
+      <input type="hidden" id="p_producto_id" value="${productoId}">
+    `);
+    var modal = new bootstrap.Modal(document.getElementById('personalizarModal'));
+    modal.show();
+  });
+
+  // Al crear producto personalizado: POST a endpoint que duplica producto (venta_personalize_create)
+  $('#personalizar-crear-btn').on('click', function(){
+    var producto_id = $('#p_producto_id').val();
+    var nombre_nuevo = $('#p_nombre').val();
+    var precio_nuevo = $('#p_precio').val();
+
+    $.post("{% url 'venta_personalize_create' %}", {
+      producto_id: producto_id,
+      csrfmiddlewaretoken: '{{ csrf_token }}'
+    }).done(function(resp){
+      if(resp.ok){
+        // resp.nuevo_producto_id / nuevo_producto_nombre
+        // Actualizar el select del row actual para seleccionar el nuevo producto.
+        var $tr = $('#items-table').find('tr[data-form-index="'+currentRowIndex+'"]');
+        var $select = $tr.find('select');
+        // Si la opción no existe, la añadimos y la seleccionamos.
+        if($select.find('option[value="'+resp.nuevo_producto_id+'"]').length == 0){
+          $select.append($('<option>').val(resp.nuevo_producto_id).text(resp.nuevo_producto_nombre).attr('data-precio', precio_nuevo));
         }
-        let html = emptyFormHtml.replace(/__prefix__/g, index);
-        // wrap in div to parse
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = html;
-        // collect inputs/selects
-        const inputs = wrapper.querySelectorAll('input, select, textarea');
-        // build row
-        const tr = document.createElement('tr');
-        tr.classList.add('item-row');
-        const tdCant = document.createElement('td');
-        const tdProd = document.createElement('td');
-        const tdRec = document.createElement('td'); tdRec.className = 'small text-muted';
-        const tdAcc = document.createElement('td');
-
-        // Place inputs into correct td based on name suffix
-        inputs.forEach(function(el){
-            if (!el.name) return;
-            if (el.name.indexOf('-cantidad') !== -1) tdCant.appendChild(el);
-            else if (el.name.indexOf('-producto') !== -1) tdProd.appendChild(el);
-            else if (el.name.indexOf('-DELETE') !== -1) { el.style.display='none'; tdAcc.appendChild(el); }
-            else tdProd.appendChild(el);
-        });
-
-        // action buttons
-        const btnPersonalize = document.createElement('button');
-        btnPersonalize.type = 'button';
-        btnPersonalize.className = 'btn btn-sm btn-outline-secondary btn-personalize';
-        btnPersonalize.textContent = 'Personalizar';
-        const btnRemove = document.createElement('button');
-        btnRemove.type = 'button';
-        btnRemove.className = 'btn btn-sm btn-danger btn-remove-row';
-        btnRemove.textContent = 'Eliminar';
-        tdAcc.appendChild(btnPersonalize);
-        tdAcc.appendChild(btnRemove);
-
-        tr.appendChild(tdCant);
-        tr.appendChild(tdProd);
-        tr.appendChild(tdRec);
-        tr.appendChild(tdAcc);
-
-        itemsBody.appendChild(tr);
-        totalInput.value = String(index + 1);
-
-        // attach remove handler
-        btnRemove.addEventListener('click', function(){
-            // if DELETE hidden exists mark it, else remove row and decrement TOTAL_FORMS
-            const del = tr.querySelector('input[name$="-DELETE"]');
-            if (del) { del.value = 'on'; tr.style.display = 'none'; }
-            else { tr.remove(); totalInput.value = String(parseInt(totalInput.value,10)-1); }
-        });
-
-        // personalize handler: calls backend to duplicate product and fills select with new product
-        btnPersonalize.addEventListener('click', async function(){
-            const select = tdProd.querySelector('select');
-            if (!select) return alert('Selecciona un producto antes de personalizar.');
-            const prodId = select.value;
-            if (!prodId) return alert('Selecciona un producto antes de personalizar.');
-            const resp = await fetch("{% url 'venta_personalize_create' %}", {
-                method: 'POST',
-                headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/x-www-form-urlencoded'},
-                body: new URLSearchParams({'producto_id': prodId})
-            });
-            const data = await resp.json();
-            if (data.ok) {
-                // set select to new product id (it won't exist in other options, so we add option)
-                const opt = document.createElement('option');
-                opt.value = data.nuevo_producto_id;
-                opt.textContent = data.nuevo_producto_nombre;
-                select.appendChild(opt);
-                select.value = data.nuevo_producto_id;
-                alert('Producto personalizado creado y asignado.');
-            } else {
-                alert('Error personalizando producto: ' + (data.error || ''));
-            }
-        });
+        $select.val(resp.nuevo_producto_id).trigger('change');
+        // cerrar modal
+        var modalEl = document.getElementById('personalizarModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+      } else {
+        alert('No se pudo personalizar el producto: ' + (resp.error || 'error'));
+      }
+    }).fail(function(xhr){
+      alert('Error al contactar al servidor: ' + xhr.responseText);
     });
 
-    // Remove handlers for existing rows
-    document.querySelectorAll('.btn-remove-row').forEach(function(btn){
-        btn.addEventListener('click', function(){
-            const row = btn.closest('tr');
-            const del = row.querySelector('input[name$="-DELETE"]');
-            if (del) { del.value = 'on'; row.style.display = 'none'; }
-            else { row.remove(); const total=document.querySelector('[name$="-TOTAL_FORMS"]'); total.value = String(Math.max(0, parseInt(total.value,10)-1)); }
-        });
-    });
+  });
 
-    // Client create modal AJAX
-    const createClientBtn = document.getElementById('createClientBtn');
-    if (createClientBtn) {
-        createClientBtn.addEventListener('click', async function(){
-            const form = document.getElementById('clientCreateForm');
-            const fd = new FormData(form);
-            const resp = await fetch("{% url 'cliente_create_ajax' %}", {
-                method: 'POST',
-                headers: {'X-CSRFToken': '{{ csrf_token }}'},
-                body: fd
-            });
-            const data = await resp.json();
-            if (data.ok) {
-                // set the select value to the new client (append option)
-                const sel = document.querySelector('[name="cliente"]');
-                const opt = document.createElement('option');
-                opt.value = data.cliente_id;
-                opt.textContent = data.cliente_nombre;
-                sel.appendChild(opt);
-                sel.value = data.cliente_id;
-                // close modal
-                const modalEl = document.getElementById('modalCreateClient');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
-            } else {
-                // show errors
-                document.getElementById('clientErrors').textContent = JSON.stringify(data.errors || data);
-            }
-        });
-    }
-
-    // Toggle usar puntos: when checked, send a request to server to apply min(cliente.puntos, precio_total)
-    const usarToggle = document.getElementById('usarPuntosToggle');
-    if (usarToggle) {
-        usarToggle.addEventListener('change', async function(){
-            // We'll apply automatically on save/finalize; here we can show a quick hint or update hidden input
-            // For simplicity, no immediate server call; server will apply on save/finalize.
-            // You could implement AJAX call to compute and display preview.
-        });
-    }
-
-})();
+  // Inicial update rows
+  $('#items-table tbody tr').each(function(){
+    updateRowSubtotal($(this));
+  });
+});
 </script>
 {% endblock %}
