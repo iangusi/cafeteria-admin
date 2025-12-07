@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import Empleado, Horario, Asistencia, Insumo, Producto, ProductoReceta, Cliente, Venta, VentaItem, VentaItemReceta
+from .models import Empleado, Horario, Asistencia, Insumo, Producto, ProductoReceta, Cliente, Venta, VentaItem
 
 # ==================== FORMULARIOS EXISTENTES ====================
 
@@ -181,15 +181,6 @@ class ClienteForm(forms.ModelForm):
             'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
-class VentaForm(forms.ModelForm):
-    class Meta:
-        model = Venta
-        fields = ['titulo', 'cliente']
-        widgets = {
-            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
-            'cliente': forms.Select(attrs={'class': 'form-select'}),
-        }
-
 class ClienteCreateForm(forms.ModelForm):
     class Meta:
         model = Cliente
@@ -200,6 +191,15 @@ class ClienteCreateForm(forms.ModelForm):
             'celular': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
+class VentaForm(forms.ModelForm):
+    class Meta:
+        model = Venta
+        fields = ['titulo', 'cliente']
+        widgets = {
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'cliente': forms.Select(attrs={'class': 'form-select'}),
+        }
+
 class VentaItemForm(forms.ModelForm):
     class Meta:
         model = VentaItem
@@ -207,16 +207,6 @@ class VentaItemForm(forms.ModelForm):
         widgets = {
             'producto': forms.Select(attrs={'class': 'form-select'}),
             'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'step': '1'}),
-        }
-
-class VentaItemRecetaForm(forms.ModelForm):
-    class Meta:
-        model = VentaItemReceta
-        fields = ['insumo', 'cantidad', 'unidad']
-        widgets = {
-            'insumo': forms.Select(attrs={'class': 'form-select'}),
-            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.001'}),
-            'unidad': forms.Select(attrs={'class': 'form-select'}),
         }
 
 # Inline formset to render items inside the venta form

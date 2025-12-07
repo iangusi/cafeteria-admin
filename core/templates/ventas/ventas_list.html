@@ -1,85 +1,72 @@
-{% extends "base.html" %}
-{% block title %}Ventas{% endblock %}
+<!-- Plantilla de lista de ventas: muestra tarjetas/bloques con la info solicitada -->
+{% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Ventas</h1>
-    <a href="{% url 'venta_create' %}" class="btn btn-primary">Nueva Venta</a>
+<h1>Ventas</h1>
+<div class="ventas-grid">
+  {% for venta in ventas %}
+  <div class="venta-card card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between">
+        <div>
+          <h5 class="card-title">{{ venta.titulo }}</h5>
+          <p class="card-subtitle text-muted">{{ venta.fecha }}</p>
+        </div>
+        <div class="text-end">
+          <span class="badge bg-secondary">{{ venta.get_estado_display }}</span>
+        </div>
+      </div>
+
+      <div class="mt-2">
+        <p><strong>Precio venta:</strong> ${{ venta.precio_total_cache }}</p>
+        <p><strong>Costo:</strong> ${{ venta.costo_total_cache }}</p>
+        <p><strong>Puntos usados:</strong> {{ venta.puntos_usados }}</p>
+        <p><strong>Precio final:</strong> ${{ venta.precio_final }}</p>
+      </div>
+
+      <hr/>
+
+      <div>
+        <strong>Productos:</strong>
+        <ul>
+          {% for item in venta.items.all %}
+            {% if item.producto %}
+            <li>{{ item.producto.nombre }} x{{ item.cantidad }} — ${{ item.precio }} c/u</li>
+            {% else %}
+            <li>Producto x{{ item.cantidad }} — ${{ item.precio }} c/u</li>
+            {% endif %}
+          {% empty %}
+            <li>No hay productos</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="mt-3 d-flex gap-2">
+        {% if venta.estado == 'pendiente' %}
+        <a href="{% url 'venta_edit' venta.pk %}" class="btn btn-sm btn-primary">Editar</a>
+        <form method="post" action="{% url 'venta_cancel' venta.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger">Cancelar</button>
+        </form>
+        <form method="post" action="{% url 'venta_finalize' venta.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-success">Finalizar</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 </div>
 
-<div class="row">
-    {% for venta in ventas %}
-    <div class="col-md-6 mb-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h5 class="mb-1">{{ venta.titulo }}</h5>
-                        <div class="small text-muted">
-                            Fecha: {{ venta.fecha }} • Estado: {{ venta.get_estado_display }}
-                        </div>
-                        <div class="small mt-1">
-                            Cliente: {% if venta.cliente %}{{ venta.cliente.nombre }}{% else %}<em>Sin cliente</em>{% endif %}
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <div><strong>${{ venta.precio_total_cache|floatformat:2 }}</strong></div>
-                        <div class="small text-muted">Costo: ${{ venta.costo_total_cache|floatformat:2 }}</div>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div class="small">
-                    <strong>Productos</strong>
-                    <ul class="list-unstyled mb-0">
-                        {% for it in venta.items.all %}
-                        <li>
-                            <strong>{{ it.nombre }}</strong> x{{ it.cantidad }} — ${{ it.precio|floatformat:2 }}
-                            <div class="text-muted small">
-                                {% if it.receta_items.all %}
-                                    {% for r in it.receta_items.all %}
-                                        {{ r.insumo.nombre }}: {{ r.cantidad }}{{ r.unidad }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                {% elif it.producto %}
-                                    {% for pr in it.producto.receta_items.all|slice:":3" %}
-                                        {{ pr.insumo.nombre }}: {{ pr.cantidad }}{{ pr.unidad }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                    {% if it.producto.receta_items.count > 3 %} ...{% endif %}
-                                {% endif %}
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-
-                <hr>
-
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        {% if venta.estado == 'pendiente' %}
-                            <a href="{% url 'venta_edit' venta.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
-
-                            <form method="post" action="{% url 'venta_cancel' venta.pk %}" style="display:inline;">
-                                {% csrf_token %}
-                                <button class="btn btn-sm btn-outline-danger">Cancelar</button>
-                            </form>
-                            <form method="post" action="{% url 'venta_finalize' venta.pk %}" style="display:inline;">
-                                {% csrf_token %}
-                                <button class="btn btn-sm btn-success">Finalizar</button>
-                            </form>
-                        {% endif %}
-                    </div>
-                    <div class="text-end small">
-                        Puntos usados: {{ venta.puntos_usados }} • Final: <strong>${{ venta.precio_final|floatformat:2 }}</strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">No hay ventas registradas.</div>
-    </div>
-    {% endfor %}
+<div class="pagination">
+  {% if is_paginated %}
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+    {% endif %}
+    <span>Página {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+    {% endif %}
+  {% endif %}
 </div>
 {% endblock %}

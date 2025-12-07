@@ -281,8 +281,7 @@ from django.db import models
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 
-# Asumo que ya existen Insumo, Producto, ProductoReceta y Cliente en este archivo.
-# Defino las clases de Venta aquí.
+# clases de Venta
 
 class Venta(models.Model):
     ESTADOS = [
@@ -308,9 +307,6 @@ class Venta(models.Model):
         return self.estado == 'pendiente'
 
     def calcular_totales(self):
-        """
-        Recalcula precio_total_cache y costo_total_cache en memoria (no guarda).
-        """
         precio = Decimal('0.00')
         costo = Decimal('0.00')
         for it in self.items.all():
@@ -322,19 +318,12 @@ class Venta(models.Model):
 
     @property
     def precio_final(self):
-        """
-        Precio después de aplicar puntos_usados.
-        """
         final = (Decimal(self.precio_total_cache) - Decimal(self.puntos_usados)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         if final < Decimal('0.00'):
             final = Decimal('0.00')
         return final
 
     def aplicar_puntos_auto(self):
-        """
-        Aplica automáticamente puntos: min(cliente.puntos, precio_total)
-        Si no hay cliente no hace nada.
-        """
         if not self.cliente:
             self.puntos_usados = 0
             return 0
@@ -344,18 +333,10 @@ class Venta(models.Model):
         return self.puntos_usados
 
     def descontar_inventario(self):
-        """
-        Descuenta del inventario según cada item y sus recetas (personalizadas si existen,
-        si no la receta del producto).
-        """
         for it in self.items.all():
             it.descontar_insumos()
 
     def asignar_puntos_cliente(self):
-        """
-        Si hay cliente, le da 1 punto por cada 10 pesos del precio final.
-        (Se usa precio_final, que ya considera puntos_usados).
-        """
         if not self.cliente:
             return 0
         puntos = int(Decimal(self.precio_final) // Decimal('10'))
@@ -365,43 +346,22 @@ class Venta(models.Model):
         return puntos
 
     def finalizar(self):
-        """
-        Finaliza la venta:
-         - recalcula totales
-         - aplica puntos automáticos (no los descuenta del cliente todavía; los descontamos al finalizar)
-         - descuenta inventario
-         - descuenta puntos usados del cliente
-         - asigna puntos nuevos por la compra
-         - marca como finalizada y guarda
-        """
         if not self.puede_modificar():
             return False
         self.calcular_totales()
-        # aplicar puntos automáticos si hay cliente (dejar puntos_usados definido)
         self.aplicar_puntos_auto()
-        # verificar stock (simple: intentamos descontar; si falla por cantidad negativa, podríamos revertir)
-        # aquí asumimos que descontar_insumos siempre puede ejecutarse; en producción deberías validar stock antes.
         self.descontar_inventario()
-        # restar puntos usados del cliente (solo ahora)
         if self.cliente and self.puntos_usados:
             self.cliente.puntos = max(0, (self.cliente.puntos or 0) - int(self.puntos_usados))
             self.cliente.save()
-        # asignar puntos por compra
         self.asignar_puntos_cliente()
         self.estado = 'finalizada'
         self.save()
         return True
 
     def cancelar(self):
-        """
-        Eliminación permanente de la venta.
-        Esta operación borrará la venta y todas las filas relacionadas (items, recetas de items)
-        si están configuradas con on_delete=CASCADE (comportamiento por defecto en nuestros modelos).
-        """
-        # Solo permitir eliminación si la venta está pendiente (misma regla previa)
         if self.estado != 'pendiente':
             return False
-        # Eliminar el registro completamente
         self.delete()
         return True
 
@@ -409,7 +369,6 @@ class Venta(models.Model):
 class VentaItem(models.Model):
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='items')
     producto = models.ForeignKey('Producto', null=True, blank=True, on_delete=models.SET_NULL)
-    nombre = models.CharField(max_length=200)
     precio = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), validators=[MinValueValidator(0)])
     cantidad = models.PositiveIntegerField(default=1)
 
@@ -417,80 +376,28 @@ class VentaItem(models.Model):
         ordering = ['id']
 
     def __str__(self):
-        return f"{self.nombre} x{self.cantidad}"
+        # Como ya no existe nombre, usamos el nombre del producto o un placeholder
+        return f"{self.producto.nombre if self.producto else 'Producto'} x{self.cantidad}"
 
     def calcular_costo_total(self):
         """
-        Calcula costo del item: si tiene receta personalizada (VentaItemReceta) la usa,
-        si no, usa la receta del producto (ProductoReceta).
+        Calcula costo del item en base a la receta del producto (ProductoReceta).
+        Ya no se usan recetas personalizadas por item.
         """
         costo = Decimal('0.00')
-        recs = self.receta_items.all()
-        if recs.exists():
-            for r in recs:
-                costo += r.costo_total()
-        else:
-            if self.producto:
-                for pr in self.producto.receta_items.all():
-                    costo += pr.costo_total()
+        if self.producto:
+            for pr in self.producto.receta_items.all():
+                costo += pr.costo_total()
         return (costo * Decimal(self.cantidad)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     def descontar_insumos(self):
         """
-        Descuenta del inventario según la receta usada (personalizada o la del producto).
-        Restará la cantidad equivalente multiplicada por self.cantidad.
+        Descuenta del inventario usando la receta del producto.
         """
-        recs = self.receta_items.all()
-        if recs.exists():
-            for r in recs:
-                r.descontar_insumo_por_unidades(self.cantidad)
-        else:
-            if self.producto:
-                for pr in self.producto.receta_items.all():
-                    cantidad_equiv = pr.cantidad_equivalente_insumo()
-                    total = cantidad_equiv * Decimal(self.cantidad)
-                    ins = pr.insumo
-                    ins.cantidad = (ins.cantidad - total).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-                    ins.save()
-
-
-class VentaItemReceta(models.Model):
-    venta_item = models.ForeignKey(VentaItem, on_delete=models.CASCADE, related_name='receta_items')
-    insumo = models.ForeignKey('Insumo', on_delete=models.PROTECT)
-    cantidad = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(0)])
-    unidad = models.CharField(max_length=10, choices=[
-        ('kg','kg'),('g','g'),('l','l'),('ml','ml'),('unidad','unidad'),('docena','docena')
-    ], default='unidad')
-
-    def __str__(self):
-        return f"{self.insumo.nombre} {self.cantidad} {self.unidad}"
-
-    def cantidad_equivalente_insumo(self):
-        receta_u = self.unidad
-        insumo_u = self.insumo.unidad
-        q = Decimal(self.cantidad)
-        if receta_u == insumo_u:
-            return q
-        if receta_u == 'kg' and insumo_u == 'g':
-            return q * Decimal('1000')
-        if receta_u == 'g' and insumo_u == 'kg':
-            return q / Decimal('1000')
-        if receta_u == 'l' and insumo_u == 'ml':
-            return q * Decimal('1000')
-        if receta_u == 'ml' and insumo_u == 'l':
-            return q / Decimal('1000')
-        if receta_u == 'docena' and insumo_u == 'unidad':
-            return q * Decimal('12')
-        if receta_u == 'unidad' and insumo_u == 'docena':
-            return q / Decimal('0.083333333')
-        return q
-
-    def costo_total(self):
-        ce = self.cantidad_equivalente_insumo()
-        return (ce * Decimal(str(self.insumo.costo_por_unidad))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-    def descontar_insumo_por_unidades(self, multiplicador=1):
-        ce = self.cantidad_equivalente_insumo() * Decimal(multiplicador)
-        ins = self.insumo
-        ins.cantidad = (ins.cantidad - ce).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-        ins.save()
+        if self.producto:
+            for pr in self.producto.receta_items.all():
+                cantidad_equiv = pr.cantidad_equivalente_insumo()
+                total = cantidad_equiv * Decimal(self.cantidad)
+                ins = pr.insumo
+                ins.cantidad = (ins.cantidad - total).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                ins.save()

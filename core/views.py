@@ -14,7 +14,7 @@ from django.db import transaction
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 
-from .models import Empleado, Horario, Asistencia, Insumo, Producto, ProductoReceta, Cliente, Venta, VentaItem, VentaItemReceta
+from .models import Empleado, Horario, Asistencia, Insumo, Producto, ProductoReceta, Cliente, Venta, VentaItem
 from .forms import (
     EmpleadoForm, FiltroEmpleadosForm, HorarioForm, FiltroHorariosForm,
     InsumoForm, FiltroInsumoForm, ProductoForm, ProductoRecetaForm, FiltroProductoForm,
