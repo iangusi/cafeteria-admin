@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
 from django.core.exceptions import ValidationError
+import json
 
 from .models import Empleado, Horario, Asistencia, Insumo, Producto, ProductoReceta, Cliente, Venta, VentaItem
 from .forms import (
@@ -878,6 +879,23 @@ class VentasListView(ListView):
         return qs
 
 # ----------------- CREAR / EDITAR -----------------
+def _build_products_json():
+    productos = Producto.objects.filter(activo=True).prefetch_related('receta_items')
+    lista = []
+    for p in productos:
+        try:
+            costo = p.costo_total()
+        except Exception:
+            costo = Decimal('0.00')
+        lista.append({
+            'id': p.pk,
+            'nombre': p.nombre,
+            'precio': str(p.precio_venta),
+            'costo': str(costo),
+        })
+    return json.dumps(lista)
+
+
 def venta_create(request):
     """
     Crear venta nueva: muestra el formulario (venta + items inline).
@@ -893,14 +911,14 @@ def venta_create(request):
                 venta.save()
                 formset.instance = venta
                 items = formset.save(commit=False)
-                # set defaults for each item (nombre, precio from product)
+                # set defaults for each item (precio from product)
                 for it in items:
                     if it.producto:
-                        it.nombre = it.producto.nombre
                         it.precio = it.producto.precio_venta
-                    else:
-                        it.nombre = it.nombre or 'Producto'
                     it.save()
+                # process deletions and save m2m
+                for obj in formset.deleted_objects:
+                    obj.delete()
                 formset.save_m2m()
                 venta.calcular_totales()
                 venta.save()
@@ -912,11 +930,16 @@ def venta_create(request):
         form = VentaForm()
         formset = VentaItemFormSet(instance=Venta())
 
-    return render(request, 'ventas/venta_form.html', {
+    context = {
         'form': form,
         'formset': formset,
         'creating': True,
-    })
+        # HTML del empty_form para clonación en JS (table row)
+        'empty_form_html': formset.empty_form.as_table(),
+        # JSON con productos y sus precios/costos para inyectar en los selects
+        'productos_json': _build_products_json(),
+    }
+    return render(request, 'ventas/venta_form.html', context)
 
 
 def venta_edit(request, pk):
@@ -937,7 +960,6 @@ def venta_edit(request, pk):
                     obj.delete()
                 for it in items:
                     if it.producto:
-                        it.nombre = it.producto.nombre
                         it.precio = it.producto.precio_venta
                     it.save()
                 formset.save_m2m()
@@ -951,12 +973,15 @@ def venta_edit(request, pk):
         form = VentaForm(instance=venta)
         formset = VentaItemFormSet(instance=venta)
 
-    return render(request, 'ventas/venta_form.html', {
+    context = {
         'form': form,
         'formset': formset,
         'venta': venta,
         'creating': False,
-    })
+        'empty_form_html': formset.empty_form.as_table(),
+        'productos_json': _build_products_json(),
+    }
+    return render(request, 'ventas/venta_form.html', context)
 
 
 # ----------------- CANCELAR -----------------

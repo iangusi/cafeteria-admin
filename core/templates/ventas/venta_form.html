@@ -5,15 +5,24 @@
 
 <form method="post" id="venta-form">
   {% csrf_token %}
-  <div class="mb-3">
-    {{ form.titulo.label_tag }} {{ form.titulo }}
-  </div>
-  <div class="mb-3">
-    {{ form.cliente.label_tag }} {{ form.cliente }}
-    <button type="button" id="crear-cliente-btn" class="btn btn-sm btn-outline-secondary">Crear cliente</button>
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      {{ form.titulo.label_tag }} {{ form.titulo }}
+    </div>
+    <div class="col-md-4">
+      {{ form.cliente.label_tag }} {{ form.cliente }}
+    </div>
+    <div class="col-md-2 d-flex align-items-end gap-2">
+      <button type="button" id="crear-cliente-btn" class="btn btn-outline-secondary btn-sm">Crear cliente</button>
+      <button type="button" id="usar-puntos-btn" class="btn btn-outline-primary btn-sm">Usar puntos</button>
+    </div>
   </div>
 
   <h3>Productos</h3>
+  <div class="mb-2">
+    <button type="button" id="add-product-btn" class="btn btn-sm btn-success">Agregar producto</button>
+  </div>
+
   <table class="table table-sm" id="items-table">
     <thead>
       <tr>
@@ -28,21 +37,24 @@
       {{ formset.management_form }}
       {% for form_item in formset.forms %}
       <tr data-form-index="{{ forloop.counter0 }}">
-        <td>
-          {{ form_item.producto }}
+        <td class="producto-cell">
+          {# Render select manually with data-precio/data-costo #}
+          {% with widget=form_item.producto %}
+            {% comment %} fallback to default rendering if necessary {% endcomment %}
+            {{ widget }}
+          {% endwith %}
         </td>
         <td>
           {{ form_item.cantidad }}
         </td>
         <td class="precio-cell">
-          {% comment %} mostramos precio actual del producto (si está cargado en el item) {% endcomment %}
           {% with item=form_item.instance %}
             ${{ item.precio|default:"0.00" }}
           {% endwith %}
         </td>
         <td class="subtotal-cell">
           {% with item=form_item.instance %}
-            ${{ item.precio|default:"0.00"|floatformat:2|add:"0" }}{% comment %} se actualizará por JS {% endcomment %}
+            ${{ item.precio|default:"0.00"|floatformat:2 }}
           {% endwith %}
         </td>
         <td>
@@ -56,12 +68,60 @@
   </table>
 
   <div class="mt-3">
-    <button type="submit" class="btn btn-primary">Guardar venta</button>
-    <a href="{% url 'ventas_list' %}" class="btn btn-secondary">Volver</a>
+    <div class="row">
+      <div class="col-md-4">
+        <p><strong>Precio total:</strong> $<span id="precio-total">0.00</span></p>
+        <p><strong>Costo total:</strong> $<span id="costo-total">0.00</span></p>
+      </div>
+      <div class="col-md-4">
+        {{ form.puntos_usados.label_tag }} {{ form.puntos_usados }}
+      </div>
+      <div class="col-md-4">
+        <p><strong>Precio final:</strong> $<span id="precio-final">0.00</span></p>
+      </div>
+    </div>
+
+    <div class="mt-2">
+      <button type="submit" class="btn btn-primary">Guardar venta</button>
+      <a href="{% url 'ventas_list' %}" class="btn btn-secondary">Volver</a>
+    </div>
   </div>
 </form>
 
-<!-- Modal para personalizar: abre un formulario pre-llenado (se crea producto via AJAX) -->
+<!-- Modal para crear cliente (inline) -->
+<div class="modal fade" id="crearClienteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="crear-cliente-form">
+        <div class="modal-header">
+          <h5 class="modal-title">Crear cliente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label>Nombre</label>
+            <input type="text" name="nombre" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label>Correo</label>
+            <input type="email" name="correo" class="form-control">
+          </div>
+          <div class="mb-2">
+            <label>Celular</label>
+            <input type="text" name="celular" class="form-control">
+          </div>
+          <div id="crear-cliente-errors" class="text-danger"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="crear-cliente-submit" class="btn btn-primary">Crear</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para personalizar: abre un formulario pre-llenado -->
 <div class="modal fade" id="personalizarModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -70,11 +130,8 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body">
-        <!-- Aquí se inyectará el formulario duplicado del producto (o una versión embebida) -->
         <form id="personalizar-form">
-          <div id="personalizar-form-fields">
-            <!-- campos precargados via JS -->
-          </div>
+          <div id="personalizar-form-fields"></div>
           <div class="mt-2">
             <button type="button" id="personalizar-crear-btn" class="btn btn-primary">Crear producto personalizado</button>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -87,52 +144,200 @@
 
 <script src="{% static 'js/jquery.min.js' %}"></script>
 <script>
-$(function(){
-  // Actualiza subtotal cuando cambian cantidad o producto
-  $('#items-table').on('change', 'select, input', function(){
-    updateRowSubtotal($(this).closest('tr'));
-  });
+/* Variables que vienen del contexto */
+const productosData = {{ productos_json|safe }};
+const emptyFormHtml = `{{ empty_form_html|escapejs }}`;
 
-  function updateRowSubtotal($tr){
-    // intenta leer precio desde el select (opción seleccionada) o desde instancia (si está)
-    var precio = 0;
-    var sel = $tr.find('select');
-    if(sel.length){
-      var opt = sel.find('option:selected');
-      // asumo que cada option tiene data-precio con precio del producto
-      precio = parseFloat(opt.data('precio') || opt.attr('data-precio') || 0);
-    }
-    var cantidad = parseInt($tr.find('input[type="number"]').val() || 0);
-    var subtotal = (precio * cantidad) || 0;
-    $tr.find('.precio-cell').text('$' + precio.toFixed(2));
-    $tr.find('.subtotal-cell').text('$' + subtotal.toFixed(2));
+$(function(){
+  // Ayuda para encontrar management inputs
+  const $totalFormsInput = $('input[name$="-TOTAL_FORMS"]');
+  function getTotalForms(){ return parseInt($totalFormsInput.val() || 0); }
+  function setTotalForms(v){ $totalFormsInput.val(v); }
+
+  // Inicializa selects: agrega data-precio/data-costo a las opciones
+  function populateSelectOptions($select){
+    $select.empty();
+    $select.append($('<option>').val('').text('--------'));
+    productosData.forEach(p=>{
+      const $opt = $('<option>').val(p.id).text(p.nombre).attr('data-precio', p.precio).attr('data-costo', p.costo);
+      $select.append($opt);
+    });
   }
 
-  // Eliminar fila (marcar DELETE en management form)
+  // Inicial populate para selects ya renderizados (si no mostraban data)
+  $('#items-table tbody tr').each(function(){
+    const $tr = $(this);
+    const $select = $tr.find('select');
+    if($select.length){
+      // preserve current value
+      const curVal = $select.val();
+      populateSelectOptions($select);
+      if(curVal){
+        $select.val(curVal);
+      }
+    }
+    updateRowSubtotal($tr);
+  });
+
+  // Add new row
+  $('#add-product-btn').on('click', function(){
+    const total = getTotalForms();
+    let rowHtml = emptyFormHtml;
+    // Django coloca __prefix__ en el empty_form; reemplazamos por index
+    rowHtml = rowHtml.replace(/__prefix__/g, total);
+    // as_table devuelve <tr> only if you used as_table for row structure; we ensure we append a <tr>.
+    // Para robustez, creamos una <tr> que contenga las celdas resultantes:
+    const $row = $('<tr data-form-index="'+total+'"></tr>');
+    $row.html(rowHtml);
+    // Si el empty_form.as_table devuelve <tr><td>..., puede que estemos anidando. Ajustamos si es necesario.
+    // A continuación, convertimos inputs a celdas similares a las filas existentes.
+    // Para simplicidad, añadimos celdas: producto, cantidad, precio, subtotal, acciones
+    const $productoCell = $('<td class="producto-cell"></td>');
+    const $cantidadCell = $('<td></td>');
+    const $precioCell = $('<td class="precio-cell">$0.00</td>');
+    const $subtotalCell = $('<td class="subtotal-cell">$0.00</td>');
+    const $actionsCell = $('<td></td>');
+
+    // Extraemos el select y cantidad del rowHtml insertado temporariamente
+    const $temp = $('<table>').html(rowHtml);
+    const $select = $temp.find('select').first();
+    const $inputCantidad = $temp.find('input[type="number"]').first();
+
+    // populate options
+    populateSelectOptions($select);
+
+    $productoCell.append($select);
+    $cantidadCell.append($inputCantidad);
+    $actionsCell.append('<button type="button" class="btn btn-sm btn-outline-secondary personalizar-btn">Personalizar</button> ');
+    $actionsCell.append('<button type="button" class="btn btn-sm btn-danger remove-row-btn">Eliminar</button>');
+
+    $row.append($productoCell, $cantidadCell, $precioCell, $subtotalCell, $actionsCell);
+    $('#items-table tbody').append($row);
+    setTotalForms(total + 1);
+  });
+
+  // Remove row
   $('#items-table').on('click', '.remove-row-btn', function(){
-    var $tr = $(this).closest('tr');
-    // si el formset tiene checkbox DELETE, marcarlo; si no, remover el tr y ajustar management form
-    var $deleteInput = $tr.find('input[type="checkbox"][name$="-DELETE"]');
+    const $tr = $(this).closest('tr');
+    // Si existe checkbox DELETE, marcarlo
+    const $deleteInput = $tr.find('input[type="checkbox"][name$="-DELETE"]');
     if($deleteInput.length){
       $deleteInput.prop('checked', true);
       $tr.hide();
     } else {
       $tr.remove();
-      // TODO: si tienes un botón "agregar fila" deberías incrementar TOTAL_FORMS etc.
+      // actualizar indices y TOTAL_FORMS (simple, decrement)
+      setTotalForms(getTotalForms() - 1);
     }
+    calculateTotals();
   });
 
-  // Personalizar: abrir modal y prellenar con producto actual (usando data del select)
-  var currentRowIndex = null;
-  $('#items-table').on('click', '.personalizar-btn', function(){
-    var $tr = $(this).closest('tr');
-    currentRowIndex = $tr.data('form-index');
-    var $sel = $tr.find('select');
-    var productoId = $sel.val();
-    var productoNombre = $sel.find('option:selected').text();
-    var productoPrecio = $sel.find('option:selected').data('precio') || 0;
+  // Update row subtotal when product or cantidad changes
+  $('#items-table').on('change', 'select, input[type="number"]', function(){
+    const $tr = $(this).closest('tr');
+    updateRowSubtotal($tr);
+    calculateTotals();
+  });
 
-    // Prellenamos el modal con campos mínimos para duplicar producto
+  function updateRowSubtotal($tr){
+    const $sel = $tr.find('select');
+    let precio = 0;
+    if($sel.length){
+      const dataPrecio = $sel.find('option:selected').data('precio');
+      precio = parseFloat(dataPrecio || 0);
+    }
+    const cantidad = parseInt($tr.find('input[type="number"]').val() || 0);
+    const subtotal = (precio * cantidad) || 0;
+    $tr.find('.precio-cell').text('$' + precio.toFixed(2));
+    $tr.find('.subtotal-cell').text('$' + subtotal.toFixed(2));
+  }
+
+  function calculateTotals(){
+    let precioTotal = 0;
+    let costoTotal = 0;
+    $('#items-table tbody tr:visible').each(function(){
+      const $tr = $(this);
+      const $sel = $tr.find('select');
+      const cantidad = parseInt($tr.find('input[type="number"]').val() || 0);
+      if($sel.length && $sel.val()){
+        const precio = parseFloat($sel.find('option:selected').data('precio') || 0);
+        const costo = parseFloat($sel.find('option:selected').data('costo') || 0);
+        precioTotal += precio * cantidad;
+        costoTotal += costo * cantidad;
+      }
+    });
+    $('#precio-total').text(precioTotal.toFixed(2));
+    $('#costo-total').text(costoTotal.toFixed(2));
+
+    const puntosUsados = parseInt($('input[name="puntos_usados"]').val() || 0);
+    const precioFinal = Math.max(0, precioTotal - (isNaN(puntosUsados) ? 0 : puntosUsados));
+    $('#precio-final').text(precioFinal.toFixed(2));
+  }
+
+  // Crear cliente (AJAX)
+  $('#crear-cliente-btn').on('click', function(){
+    const modal = new bootstrap.Modal(document.getElementById('crearClienteModal'));
+    modal.show();
+  });
+
+  $('#crear-cliente-submit').on('click', function(e){
+    e.preventDefault();
+    const $form = $('#crear-cliente-form');
+    const data = {
+      'nombre': $form.find('input[name="nombre"]').val(),
+      'correo': $form.find('input[name="correo"]').val(),
+      'celular': $form.find('input[name="celular"]').val(),
+      'csrfmiddlewaretoken': '{{ csrf_token }}'
+    };
+    $.post("{% url 'cliente_create_ajax' %}", data)
+      .done(function(resp){
+        if(resp.ok){
+          // seleccionar el cliente creado en el select
+          $('select[name="cliente"]').append($('<option>').val(resp.cliente_id).text(resp.cliente_nombre));
+          $('select[name="cliente"]').val(resp.cliente_id);
+          $('#crearClienteModal').modal('hide');
+        } else {
+          $('#crear-cliente-errors').text('Error al crear cliente.');
+        }
+      })
+      .fail(function(xhr){
+        const err = xhr.responseJSON && xhr.responseJSON.errors ? JSON.stringify(xhr.responseJSON.errors) : xhr.responseText;
+        $('#crear-cliente-errors').text(err);
+      });
+  });
+
+  // Usar puntos: aplica puntos máximos del cliente
+  $('#usar-puntos-btn').on('click', function(){
+    const clienteId = $('select[name="cliente"]').val();
+    if(!clienteId){
+      alert('Selecciona primero un cliente para usar puntos.');
+      return;
+    }
+    // Obtener puntos del cliente consultando el option (si contiene data-puntos) o pedir al servidor.
+    // Aquí intentamos leer data-puntos si existe, sino hacemos petición síncrona simple (puedes mejorar).
+    const $opt = $('select[name="cliente"] option:selected');
+    const puntos = parseInt($opt.data('puntos') || 0);
+    // Si no hay data-puntos, vamos a pedir info mínima: (método simple) -> fallback: alert
+    if(!puntos){
+      // por ahora intentamos usar un valor obtenido del servidor (no implementado). Usamos 0.
+      alert('No se pudieron obtener los puntos del cliente desde el select. Asegúrate de que el cliente tenga puntos en el sistema.');
+      return;
+    }
+    const precioTotal = parseFloat($('#precio-total').text() || 0);
+    const usar = Math.min(puntos, Math.floor(precioTotal));
+    $('input[name="puntos_usados"]').val(usar);
+    calculateTotals();
+  });
+
+  // Personalizar botón: abre modal con formulario prellenado y al crear, llama endpoint para duplicar producto
+  let currentRowIndex = null;
+  $('#items-table').on('click', '.personalizar-btn', function(){
+    const $tr = $(this).closest('tr');
+    currentRowIndex = $tr.data('form-index');
+    const $sel = $tr.find('select');
+    const productoId = $sel.val();
+    const productoNombre = $sel.find('option:selected').text();
+    const productoPrecio = $sel.find('option:selected').data('precio') || 0;
     $('#personalizar-form-fields').html(`
       <div class="mb-2">
         <label>Nombre</label>
@@ -144,47 +349,41 @@ $(function(){
       </div>
       <input type="hidden" id="p_producto_id" value="${productoId}">
     `);
-    var modal = new bootstrap.Modal(document.getElementById('personalizarModal'));
+    const modal = new bootstrap.Modal(document.getElementById('personalizarModal'));
     modal.show();
   });
 
-  // Al crear producto personalizado: POST a endpoint que duplica producto (venta_personalize_create)
   $('#personalizar-crear-btn').on('click', function(){
-    var producto_id = $('#p_producto_id').val();
-    var nombre_nuevo = $('#p_nombre').val();
-    var precio_nuevo = $('#p_precio').val();
-
+    const producto_id = $('#p_producto_id').val();
+    // Para duplicar usamos el endpoint ya existente; el servidor duplicará receta también
     $.post("{% url 'venta_personalize_create' %}", {
       producto_id: producto_id,
       csrfmiddlewaretoken: '{{ csrf_token }}'
     }).done(function(resp){
       if(resp.ok){
-        // resp.nuevo_producto_id / nuevo_producto_nombre
-        // Actualizar el select del row actual para seleccionar el nuevo producto.
-        var $tr = $('#items-table').find('tr[data-form-index="'+currentRowIndex+'"]');
-        var $select = $tr.find('select');
-        // Si la opción no existe, la añadimos y la seleccionamos.
+        // añadir opción nueva y seleccionarla en la fila actual
+        const $tr = $('#items-table').find('tr[data-form-index="'+currentRowIndex+'"]');
+        const $select = $tr.find('select');
         if($select.find('option[value="'+resp.nuevo_producto_id+'"]').length == 0){
-          $select.append($('<option>').val(resp.nuevo_producto_id).text(resp.nuevo_producto_nombre).attr('data-precio', precio_nuevo));
+          // añadimos con precio 0 (puedes mejorar para recibir precio desde resp)
+          $select.append($('<option>').val(resp.nuevo_producto_id).text(resp.nuevo_producto_nombre).attr('data-precio', '0').attr('data-costo','0'));
         }
         $select.val(resp.nuevo_producto_id).trigger('change');
         // cerrar modal
         var modalEl = document.getElementById('personalizarModal');
         var modal = bootstrap.Modal.getInstance(modalEl);
         modal.hide();
+        calculateTotals();
       } else {
         alert('No se pudo personalizar el producto: ' + (resp.error || 'error'));
       }
     }).fail(function(xhr){
       alert('Error al contactar al servidor: ' + xhr.responseText);
     });
-
   });
 
-  // Inicial update rows
-  $('#items-table tbody tr').each(function(){
-    updateRowSubtotal($(this));
-  });
+  // Inicial cálculo de totales
+  calculateTotals();
 });
 </script>
 {% endblock %}

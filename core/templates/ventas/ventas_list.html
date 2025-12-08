@@ -1,7 +1,10 @@
-<!-- Plantilla de lista de ventas: muestra tarjetas/bloques con la info solicitada -->
 {% extends 'base.html' %}
 {% block content %}
-<h1>Ventas</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>Ventas</h1>
+  <a href="{% url 'venta_create' %}" class="btn btn-primary">Crear venta</a>
+</div>
+
 <div class="ventas-grid">
   {% for venta in ventas %}
   <div class="venta-card card mb-3">
@@ -19,7 +22,13 @@
       <div class="mt-2">
         <p><strong>Precio venta:</strong> ${{ venta.precio_total_cache }}</p>
         <p><strong>Costo:</strong> ${{ venta.costo_total_cache }}</p>
-        <p><strong>Puntos usados:</strong> {{ venta.puntos_usados }}</p>
+        {% if venta.cliente %}
+          <p><strong>Cliente:</strong> {{ venta.cliente.nombre }}{% if venta.cliente.correo %} — {{ venta.cliente.correo }}{% endif %}</p>
+        {% endif %}
+        {# Evitar usar filtros inexistentes como |int: comparar directamente con > funciona para números #}
+        {% if venta.puntos_usados and venta.puntos_usados > 0 %}
+          <p><strong>Puntos usados:</strong> {{ venta.puntos_usados }}</p>
+        {% endif %}
         <p><strong>Precio final:</strong> ${{ venta.precio_final }}</p>
       </div>
 
@@ -29,13 +38,15 @@
         <strong>Productos:</strong>
         <ul>
           {% for item in venta.items.all %}
-            {% if item.producto %}
-            <li>{{ item.producto.nombre }} x{{ item.cantidad }} — ${{ item.precio }} c/u</li>
-            {% else %}
-            <li>Producto x{{ item.cantidad }} — ${{ item.precio }} c/u</li>
-            {% endif %}
-          {% empty %}
-            <li>No hay productos</li>
+                <li>
+                {% if item.producto %}
+                {{ item.producto.nombre }} 
+                {% else %}
+                Producto
+                {% endif %}
+                x{{ item.cantidad }} — ${{ item.precio }} c/u</li>
+            {% empty %}
+                <li>No hay productos</li>
           {% endfor %}
         </ul>
       </div>

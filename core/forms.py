@@ -5,7 +5,6 @@ from .models import Empleado, Horario, Asistencia, Insumo, Producto, ProductoRec
 # ==================== FORMULARIOS EXISTENTES ====================
 
 class EmpleadoForm(forms.ModelForm):
-    # field para establecer contraseña (opcional)
     password_plain = forms.CharField(
         label='Contraseña (si deseas cambiarla)',
         required=False,
@@ -105,7 +104,7 @@ class FiltroInsumoForm(forms.Form):
         ('costo_por_unidad', 'Por Costo (Menor a Mayor)'),
         ('-costo_por_unidad', 'Por Costo (Mayor a Menor)'),
     ]
-    
+
     busqueda = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Buscar insumo...'})
@@ -134,6 +133,7 @@ class ProductoForm(forms.ModelForm):
             'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+
 class ProductoRecetaForm(forms.ModelForm):
     class Meta:
         model = ProductoReceta
@@ -152,7 +152,7 @@ class FiltroProductoForm(forms.Form):
         ('precio_venta', 'Por Precio (Menor a Mayor)'),
         ('-precio_venta', 'Por Precio (Mayor a Menor)'),
     ]
-    
+
     busqueda = forms.CharField(
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Buscar producto por nombre...'})
@@ -169,6 +169,7 @@ class FiltroProductoForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'})
     )
 
+
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
@@ -181,6 +182,18 @@ class ClienteForm(forms.ModelForm):
             'activo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+
+class VentaForm(forms.ModelForm):
+    class Meta:
+        model = Venta
+        fields = ['titulo', 'cliente', 'puntos_usados']
+        widgets = {
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'cliente': forms.Select(attrs={'class': 'form-select'}),
+            'puntos_usados': forms.NumberInput(attrs={'class': 'form-control', 'step': '1', 'min': '0'}),
+        }
+
+
 class ClienteCreateForm(forms.ModelForm):
     class Meta:
         model = Cliente
@@ -191,14 +204,6 @@ class ClienteCreateForm(forms.ModelForm):
             'celular': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
-class VentaForm(forms.ModelForm):
-    class Meta:
-        model = Venta
-        fields = ['titulo', 'cliente']
-        widgets = {
-            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
-            'cliente': forms.Select(attrs={'class': 'form-select'}),
-        }
 
 class VentaItemForm(forms.ModelForm):
     class Meta:
@@ -209,11 +214,12 @@ class VentaItemForm(forms.ModelForm):
             'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'step': '1'}),
         }
 
-# Inline formset to render items inside the venta form
+
+# Inline formset to render items inside the venta form (extra=1 para permitir agregar directamente)
 VentaItemFormSet = inlineformset_factory(
     Venta,
     VentaItem,
     form=VentaItemForm,
-    extra=0,
+    extra=1,
     can_delete=True
 )
