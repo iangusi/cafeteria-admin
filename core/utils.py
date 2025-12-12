@@ -155,33 +155,3 @@ def obtener_estado_bloque_horario(horario):
         return 'amarillo'
     else:
         return 'rojo'
-
-def duplicate_producto(producto: Producto, suffix: str = None) -> Producto:
-    """
-    Crea y retorna una copia del producto pasado, incluyendo sus items de receta (ProductoReceta).
-    El nuevo nombre se asegura único añadiendo timestamp o el sufijo provisto.
-    """
-    if not suffix:
-        suffix = timezone.localtime().strftime('%Y%m%d%H%M%S')
-    nuevo_nombre = f"{producto.nombre} - Personalizado {suffix}"
-
-    with transaction.atomic():
-        # Copiar campos esenciales del producto
-        nuevo = Producto.objects.create(
-            nombre=nuevo_nombre,
-            precio_venta=producto.precio_venta,
-            descripcion=producto.descripcion,
-            activo=True
-        )
-
-        # Copiar receta (ProductoReceta)
-        recs = ProductoReceta.objects.filter(producto=producto)
-        for r in recs:
-            ProductoReceta.objects.create(
-                producto=nuevo,
-                insumo=r.insumo,
-                cantidad=r.cantidad,
-                unidad=r.unidad if hasattr(r, 'unidad') else getattr(r, 'unidad', 'unidad')
-            )
-
-    return nuevo

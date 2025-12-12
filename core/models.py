@@ -5,6 +5,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.contrib.auth.hashers import make_password, check_password as django_check_password
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
+from django.utils import timezone
+
 
 class Empleado(models.Model):
     ROLES = [
@@ -276,10 +278,7 @@ class Cliente(models.Model):
         self.activo = False
         self.save()
 
-from decimal import Decimal
-from django.db import models
-from django.core.validators import MinValueValidator
-from django.utils import timezone
+
 
 # clases de Venta
 

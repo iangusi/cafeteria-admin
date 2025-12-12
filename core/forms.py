@@ -190,30 +190,3 @@ class ClienteCreateForm(forms.ModelForm):
             'correo': forms.EmailInput(attrs={'class': 'form-control'}),
             'celular': forms.TextInput(attrs={'class': 'form-control'}),
         }
-
-class VentaForm(forms.ModelForm):
-    class Meta:
-        model = Venta
-        fields = ['titulo', 'cliente']
-        widgets = {
-            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
-            'cliente': forms.Select(attrs={'class': 'form-select'}),
-        }
-
-class VentaItemForm(forms.ModelForm):
-    class Meta:
-        model = VentaItem
-        fields = ['producto', 'cantidad']
-        widgets = {
-            'producto': forms.Select(attrs={'class': 'form-select'}),
-            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'step': '1'}),
-        }
-
-# Inline formset to render items inside the venta form
-VentaItemFormSet = inlineformset_factory(
-    Venta,
-    VentaItem,
-    form=VentaItemForm,
-    extra=0,
-    can_delete=True
-)

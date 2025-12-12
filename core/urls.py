@@ -40,15 +40,4 @@ urlpatterns = [
     path('clientes/<int:pk>/editar/', views.ClienteUpdateView.as_view(), name='cliente_editar'),
     path('clientes/<int:pk>/eliminar/', views.ClienteDeleteView.as_view(), name='cliente_eliminar'),
 
-    # Ventas
-    path('ventas/', views.VentasListView.as_view(), name='ventas_list'),
-    path('ventas/crear/', views.venta_create, name='venta_create'),
-    path('ventas/<int:pk>/editar/', views.venta_edit, name='venta_edit'),
-    path('ventas/<int:pk>/cancel/', views.venta_cancel, name='venta_cancel'),
-    path('ventas/<int:pk>/finalize/', views.venta_finalize, name='venta_finalize'),
-
-    # AJAX endpoint for inline client creation
-    path('ventas/cliente/crear-ajax/', views.cliente_create_ajax, name='cliente_create_ajax'),
-    # AJAX endpoint to duplicate product for personalization
-    path('ventas/producto/personalizar/', views.venta_personalize_create, name='venta_personalize_create'),
 ]
